@@ -161,8 +161,7 @@ spec:
         - name: specs
           mountPath: /home/kogito/serverless-workflow-project/src/main/resources/specs
         - name: props
-          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/application.properties
-          subPath: application.properties
+          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/config
     volumes:
       - name: schemas
         configMap:
