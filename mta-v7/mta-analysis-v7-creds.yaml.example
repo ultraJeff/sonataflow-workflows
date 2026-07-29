@@ -1,0 +1,9 @@
+---
+# Source: mta-v7/templates/00-secret_mta-analysis-v7.yaml
+apiVersion: v1
+data:
+  NOTIFICATIONS_BEARER_TOKEN: ""
+kind: Secret
+metadata:
+  creationTimestamp: null
+  name: mta-analysis-v7-creds
