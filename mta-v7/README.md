@@ -105,3 +105,85 @@ An updated workflow that supports MTA 8.x's auth model, or documentation from th
 - [ ] **Blocker:** Get MTA 8.x auth working — either via an updated workflow chart or custom OIDC config
 - [ ] Use a shared Keycloak/RHBK instance instead of MTA's built-in one — MTA deploys its own RHBK operator and Keycloak instance, which is redundant when RHDH already has Keycloak. Consolidating to a single Keycloak would eliminate the cross-namespace secret copying and simplify auth management.
 - [ ] Check for updated Helm chart versions that support MTA 8.x
+
+## Building a Custom MTA 8.x Workflow
+
+If the upstream chart remains unmaintained, here's what a from-scratch MTA 8.x workflow would require:
+
+### 1. Auth: Get an OIDC token from MTA's Keycloak
+
+MTA 8.x Keycloak details (on tallgeese):
+- Service: `mta-rhbk-service.openshift-mta.svc.cluster.local:8443`
+- Context path: `/auth` (legacy Keycloak path)
+- Realm: `mta`
+- Client: `admin-cli` (public, no secret)
+- Grant type: `password`
+- Admin user: `admin` (password stored in `mta-analysis-v7-secrets`)
+- Master realm works with the `mta-keycloak-rhbk` secret password; MTA realm admin has a separately managed password
+
+Token endpoint: `https://mta-rhbk-service.openshift-mta:8443/auth/realms/mta/protocol/openid-connect/token`
+
+### 2. API: Talk to the Hub service directly
+
+- Service: `mta-hub.openshift-mta.svc.cluster.local:8080` (NOT `mta-ui`)
+- The Hub API does not use a `/hub` prefix — API paths are directly on the root (e.g. `/applications`, `/taskgroups`)
+- Requires a Bearer token from the MTA Keycloak
+- The `mta-ui` service redirects all requests to Keycloak (302) — don't use it for API calls
+
+### 3. NetworkPolicy
+
+MTA 8.x deploys a `mta-deny-all` NetworkPolicy. Must create an allow policy:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-sonataflow-to-mta
+  namespace: openshift-mta
+spec:
+  podSelector: {}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: sonataflow-infra
+  policyTypes:
+    - Ingress
+```
+
+### 4. OpenAPI Spec
+
+The existing `specs/mta.json` was generated from MTA 6.x/7.x. For MTA 8.x:
+- Export the current spec from the running Hub: `curl -sk -H "Authorization: Bearer <token>" http://mta-hub.openshift-mta:8080/openapi.json`
+- Or use the Konveyor tackle2-hub repo: `https://github.com/konveyor/tackle2-hub`
+- Compare with the existing spec to identify changed endpoints, request/response schemas
+
+### 5. Workflow Structure
+
+The core flow is simple — the existing `mta.sw.yaml` states are mostly reusable:
+```
+CreateApplication → CreateTaskGroup → SubmitAnalysis → PollResults (loop) → GetAnalysis → CountIncidents → Notify
+```
+
+The main changes needed:
+- Update function definitions to match MTA 8.x API endpoints
+- Add OIDC token acquisition (either via Quarkus OIDC client or a custom function state)
+- Update the OpenAPI spec
+- Test each API call against the live MTA 8.x instance
+
+### 6. Building the Image
+
+Use the `dev` profile for testing (no pre-built image needed):
+```yaml
+annotations:
+  sonataflow.org/profile: dev
+```
+
+For production, build with the SonataFlow builder or a Tekton pipeline and push to a registry.
+
+### 7. Estimated Effort
+
+- OpenAPI spec update + validation: 1-2 days
+- Auth integration (OIDC client config): 1 day
+- Workflow state updates + testing: 2-3 days
+- Image build + deployment: 1 day
+- **Total: ~1 week**
