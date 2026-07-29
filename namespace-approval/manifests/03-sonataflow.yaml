@@ -6,7 +6,7 @@ metadata:
   annotations:
     sonataflow.org/description: Request and auto-provision an OpenShift namespace via AAP
     sonataflow.org/version: "1.0.0"
-    sonataflow.org/profile: preview
+    sonataflow.org/profile: dev
 spec:
   flow:
     id: namespace-approval
@@ -150,25 +150,30 @@ spec:
             functionRef:
               refName: errorResult
         end: true
+  resources:
+    configMaps:
+      - configMap:
+          name: namespace-approval-schemas
+        workflowPath: schemas
+      - configMap:
+          name: namespace-approval-specs
+        workflowPath: specs
+      - configMap:
+          name: namespace-approval-props
+        workflowPath: config
+  persistence:
+    postgresql:
+      secretRef:
+        name: sonataflow-psql-postgresql
+        userKey: postgres-username
+        passwordKey: postgres-password
+      serviceRef:
+        name: sonataflow-psql-postgresql
+        port: 5432
+        databaseName: sonataflow
+        databaseSchema: namespace-approval
   podTemplate:
     container:
       envFrom:
         - secretRef:
             name: namespace-approval-creds
-      volumeMounts:
-        - name: schemas
-          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/schemas
-        - name: specs
-          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/specs
-        - name: props
-          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/config
-    volumes:
-      - name: schemas
-        configMap:
-          name: namespace-approval-schemas
-      - name: specs
-        configMap:
-          name: namespace-approval-specs
-      - name: props
-        configMap:
-          name: namespace-approval-props
