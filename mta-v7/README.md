@@ -68,12 +68,40 @@ The Orchestrator RBAC permissions must be set in RHDH (see `../SETUP.md`).
 4. Set "Export to Issue Manager" to `false` (unless Jira is configured)
 5. Add a recipient for notifications (e.g. `user:default/admin`)
 
+## Status: NOT WORKING WITH MTA 8.x
+
+**This workflow does not work with MTA 8.1.** The workflow (Helm chart v1.6.0) was built and tested against MTA 6.2.x / Konveyor 0.2.x. MTA 8.x has breaking changes that are not accounted for:
+
+1. **Authentication:** MTA 8.x uses RHBK (Keycloak) for all Hub API auth. The older MTA versions had no auth or simple basic auth. The workflow's `application.properties` has no OIDC client config, and the basic auth placeholders (`username`/`password`) don't work against MTA 8.x.
+
+2. **Keycloak context path:** MTA 8.x's RHBK uses the legacy `/auth` context path. The realm is `mta`, not `tackle`. The client is `admin-cli` (public). The MTA realm admin user has a separate password from the Keycloak admin.
+
+3. **NetworkPolicies:** MTA 8.x deploys `mta-deny-all` and `mta-namespace` NetworkPolicies that block all cross-namespace traffic. A `allow-sonataflow-to-mta` NetworkPolicy must be created to allow the workflow pod in `sonataflow-infra` to reach MTA services in `openshift-mta`.
+
+4. **Service endpoints:** The Hub API is on the `mta-hub` service (port 8080), not the `mta-ui` service. The `mta-ui` service returns 302 redirects to Keycloak for all requests including `/hub` paths.
+
+5. **Helm chart conflicts:** The chart bundles the MTA operator resources (Namespace, OperatorGroup, Subscription, Tackle CR, CRDs) which conflict with an existing MTA 8.x installation. Must use `--skip-crds` and filter out existing resources.
+
+### What we tried
+
+- OIDC client credentials grant against MTA's Keycloak (`mta-rhbk-service:8443/auth/realms/mta`)
+- Basic auth against the Hub API
+- Bearer token with the Hub addon token
+- All returned 401 from the Hub API
+
+### What's needed
+
+An updated workflow that supports MTA 8.x's auth model, or documentation from the orchestrator team on configuring the OIDC client for the MTA Hub API in MTA 8.x. Check `rhdhorchestrator/serverless-workflows` for updates.
+
 ## Known Issues
 
-- The Helm chart does not inject required env vars — they must be added manually
-- MTA uses a separate Keycloak instance from RHDH, requiring cross-namespace secret copying
+- The Helm chart does not inject required env vars (`MTA_URL`, `BACKSTAGE_NOTIFICATIONS_URL`) — they must be added manually to the SonataFlow CR
+- MTA uses a separate Keycloak instance from RHDH, requiring cross-namespace secret management
 - The `tackle-ui` client in MTA's Keycloak is a public client — the `credentials.secret` is empty
+- Flyway migration fails on restart if schema already exists — needs `quarkus.flyway.baseline-on-migrate=true`
 
 ## TODO
 
-- [ ] Use a shared Keycloak/RHBK instance instead of MTA's built-in one — MTA deploys its own RHBK operator and Keycloak instance, which is redundant when RHDH already has Keycloak. Consolidating to a single Keycloak would eliminate the cross-namespace secret copying and simplify auth management. This requires configuring MTA to use an external identity provider instead of its embedded one.
+- [ ] **Blocker:** Get MTA 8.x auth working — either via an updated workflow chart or custom OIDC config
+- [ ] Use a shared Keycloak/RHBK instance instead of MTA's built-in one — MTA deploys its own RHBK operator and Keycloak instance, which is redundant when RHDH already has Keycloak. Consolidating to a single Keycloak would eliminate the cross-namespace secret copying and simplify auth management.
+- [ ] Check for updated Helm chart versions that support MTA 8.x
