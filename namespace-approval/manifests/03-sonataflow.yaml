@@ -6,7 +6,7 @@ metadata:
   annotations:
     sonataflow.org/description: Request and auto-provision an OpenShift namespace via AAP
     sonataflow.org/version: "1.0.0"
-    sonataflow.org/profile: dev
+    sonataflow.org/profile: preview
 spec:
   flow:
     id: namespace-approval
