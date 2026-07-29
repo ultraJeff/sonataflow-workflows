@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: namespace-approval-specs
+  namespace: sonataflow-infra
+data:
+  notifications-openapi.yaml: |
+    openapi: 3.0.3
+    info:
+      title: Notifications Plugin - OpenAPI Specs
+      description: Notifications Plugin - OpenAPI Specs
+      version: 1.0.0
+    tags:
+      - name: notifications
+        description: notifications plugin
+    servers:
+      - url: /
+    security:
+      - BearerToken: []
+    paths:
+      /api/notifications:
+        post:
+          tags:
+            - "notifications"
+          summary: Create a notification
+          description: Create a notification
+          operationId: createNotification
+          requestBody:
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/CreateBody"
+          responses:
+            "200":
+              description: Successful operation
+              content:
+                application/json:
+                  schema:
+                    $ref: "#/components/schemas/Notifications"
+          security:
+            - BearerToken: []
+    components:
+      schemas:
+        NotificationPayload:
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            link:
+              type: string
+            severity:
+              type: string
+              enum:
+                - "critical"
+                - "high"
+                - "normal"
+                - "low"
+            topic:
+              type: string
+          required: [title]
+        CreateBody:
+          properties:
+            recipients:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - "broadcast"
+                    - "entity"
+                entityRef:
+                  type: array
+                  items:
+                    type: string
+              required: ["type"]
+            payload:
+              $ref: "#/components/schemas/NotificationPayload"
+        Notification:
+          properties:
+            id:
+              type: string
+            created:
+              type: string
+              format: date-time
+            origin:
+              type: string
+            payload:
+              $ref: "#/components/schemas/NotificationPayload"
+          required: [id, created, origin, payload]
+        Notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+      securitySchemes:
+        BearerToken:
+          type: http
+          scheme: bearer

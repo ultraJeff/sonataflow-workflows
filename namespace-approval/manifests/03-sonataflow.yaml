@@ -20,12 +20,9 @@ spec:
     extensions:
       - extensionid: workflow-output-schema
         outputSchema: schemas/workflow-output-schema.json
-      - extensionid: workflow-uri-definitions
-        definitions:
-          notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
     functions:
       - name: createNotification
-        operation: notifications#createNotification
+        operation: specs/notifications-openapi.yaml#createNotification
       - name: launchAAPJobTemplate
         type: custom
         operation: "rest:post:/api/controller/v2/job_templates/{job_template_id}/launch/"
@@ -160,13 +157,19 @@ spec:
             name: namespace-approval-creds
       volumeMounts:
         - name: schemas
-          mountPath: /deployments/schemas
+          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/schemas
+        - name: specs
+          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/specs
         - name: props
-          mountPath: /deployments/config
+          mountPath: /home/kogito/serverless-workflow-project/src/main/resources/application.properties
+          subPath: application.properties
     volumes:
       - name: schemas
         configMap:
           name: namespace-approval-schemas
+      - name: specs
+        configMap:
+          name: namespace-approval-specs
       - name: props
         configMap:
           name: namespace-approval-props
