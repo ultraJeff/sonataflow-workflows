@@ -680,6 +680,16 @@ spec:
   podTemplate:
     container:
       resources: {}
+      env:
+        - name: MTA_URL
+          value: http://mta-ui.openshift-mta.svc.cluster.local:8080
+        - name: BACKSTAGE_NOTIFICATIONS_URL
+          value: http://backstage-developer-hub.rhdh.svc.cluster.local:80/api/notifications
+        - name: NOTIFICATIONS_BEARER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: NOTIFICATIONS_BEARER_TOKEN
+              name: mta-analysis-v7-secrets
       image: quay.io/orchestrator/serverless-workflow-mta-v7.x:e783e6a7
       envFrom:
         - secretRef:
