@@ -1,0 +1,172 @@
+apiVersion: sonataflow.org/v1alpha08
+kind: SonataFlow
+metadata:
+  name: namespace-approval
+  namespace: sonataflow-infra
+  annotations:
+    sonataflow.org/description: Request and auto-provision an OpenShift namespace via AAP
+    sonataflow.org/version: "1.0.0"
+    sonataflow.org/profile: dev
+spec:
+  flow:
+    id: namespace-approval
+    version: "1.0"
+    specVersion: "0.8"
+    name: "Provision Namespace"
+    description: Request and auto-provision an OpenShift namespace via Ansible Automation Platform
+    dataInputSchema:
+      schema: schemas/namespace-approval-schema.json
+      failOnValidationErrors: true
+    extensions:
+      - extensionid: workflow-output-schema
+        outputSchema: schemas/workflow-output-schema.json
+      - extensionid: workflow-uri-definitions
+        definitions:
+          notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+    functions:
+      - name: createNotification
+        operation: notifications#createNotification
+      - name: launchAAPJobTemplate
+        type: custom
+        operation: "rest:post:/api/controller/v2/job_templates/{job_template_id}/launch/"
+      - name: getAAPJobStatus
+        type: custom
+        operation: "rest:get:/api/controller/v2/jobs/{job_id}/"
+      - name: print
+        type: custom
+        operation: sysout
+      - name: successResult
+        type: expression
+        operation: '{
+            "result": {
+              "message": "Namespace " + .namespaceName + " provisioned successfully",
+              "outputs": [{
+                "key": "Namespace",
+                "value": .namespaceName,
+                "format": "text"
+              }]
+            }
+          }'
+      - name: errorResult
+        type: expression
+        operation: '{
+            "result": {
+              "message": "Failed to provision namespace " + .namespaceName
+            }
+          }'
+    start: "Notify: Request received"
+    states:
+      - name: "Notify: Request received"
+        type: operation
+        actions:
+          - name: "Send request notification"
+            functionRef:
+              refName: createNotification
+              arguments:
+                recipients:
+                  type: "entity"
+                  entityRef: .recipients
+                payload:
+                  title: '"Namespace request: " + .namespaceName'
+                  description: '"Provisioning namespace " + .namespaceName + " with " + .cpuQuota + " CPU and " + .memoryQuota + " memory"'
+                  topic: "Namespace Provisioning"
+                  severity: "normal"
+        transition: "Launch AAP Job"
+      - name: "Launch AAP Job"
+        type: operation
+        actions:
+          - name: "Launch Provision Namespace job template"
+            functionRef:
+              refName: launchAAPJobTemplate
+              arguments:
+                job_template_id: "8"
+                extra_vars:
+                  project_name: .namespaceName
+                  cpu_quota: .cpuQuota
+                  memory_quota: .memoryQuota
+                HEADER_Authorization: '"Bearer " + $SECRET.aap_token'
+            actionDataFilter:
+              toStateData: .aapJobResult
+        transition: "Wait for Job"
+      - name: "Wait for Job"
+        type: operation
+        actions:
+          - name: "Check job status"
+            sleep:
+              before: PT10S
+            functionRef:
+              refName: getAAPJobStatus
+              arguments:
+                job_id: .aapJobResult.id
+                HEADER_Authorization: '"Bearer " + $SECRET.aap_token'
+            actionDataFilter:
+              toStateData: .aapJobStatus
+        transition: "Check Job Status"
+      - name: "Check Job Status"
+        type: switch
+        dataConditions:
+          - name: Job successful
+            condition: .aapJobStatus.status == "successful"
+            transition: "Notify: Success"
+          - name: Job failed
+            condition: .aapJobStatus.status == "failed" or .aapJobStatus.status == "error"
+            transition: "Notify: Failed"
+        defaultCondition:
+          transition: "Wait for Job"
+      - name: "Notify: Success"
+        type: operation
+        actions:
+          - name: "Send success notification"
+            functionRef:
+              refName: createNotification
+              arguments:
+                recipients:
+                  type: "entity"
+                  entityRef: .recipients
+                payload:
+                  title: '"Namespace " + .namespaceName + " created"'
+                  description: '"Namespace " + .namespaceName + " has been provisioned successfully via Ansible Automation Platform"'
+                  topic: "Namespace Provisioning"
+                  severity: "normal"
+          - name: setOutput
+            functionRef:
+              refName: successResult
+        end: true
+      - name: "Notify: Failed"
+        type: operation
+        metadata:
+          errorMessage: '"Failed to provision namespace " + .namespaceName'
+        actions:
+          - name: "Send failure notification"
+            functionRef:
+              refName: createNotification
+              arguments:
+                recipients:
+                  type: "entity"
+                  entityRef: .recipients
+                payload:
+                  title: '"Namespace " + .namespaceName + " provisioning failed"'
+                  description: '"AAP job failed. Check AAP for details."'
+                  topic: "Namespace Provisioning"
+                  severity: "high"
+          - name: setOutput
+            functionRef:
+              refName: errorResult
+        end: true
+  podTemplate:
+    container:
+      envFrom:
+        - secretRef:
+            name: namespace-approval-creds
+      volumeMounts:
+        - name: schemas
+          mountPath: /deployments/schemas
+        - name: props
+          mountPath: /deployments/config
+    volumes:
+      - name: schemas
+        configMap:
+          name: namespace-approval-schemas
+      - name: props
+        configMap:
+          name: namespace-approval-props

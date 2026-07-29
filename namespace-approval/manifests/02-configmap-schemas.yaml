@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: namespace-approval-schemas
+  namespace: sonataflow-infra
+data:
+  namespace-approval-schema.json: |
+    {
+      "$id": "classpath:/schemas/namespace-approval-schema.json",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Provision Namespace",
+      "description": "Request a new OpenShift namespace provisioned via Ansible Automation Platform",
+      "type": "object",
+      "properties": {
+        "namespaceName": {
+          "title": "Namespace Name",
+          "description": "Name of the OpenShift namespace to create",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "maxLength": 63
+        },
+        "cpuQuota": {
+          "title": "CPU Quota",
+          "description": "Maximum CPU cores for the namespace",
+          "type": "string",
+          "default": "4",
+          "enum": ["2", "4", "8", "16"]
+        },
+        "memoryQuota": {
+          "title": "Memory Quota",
+          "description": "Maximum memory for the namespace",
+          "type": "string",
+          "default": "8Gi",
+          "enum": ["4Gi", "8Gi", "16Gi", "32Gi"]
+        },
+        "recipients": {
+          "title": "Notification Recipients",
+          "description": "Backstage entity references to notify",
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["user:default/admin"]
+        }
+      },
+      "required": ["namespaceName"]
+    }
+  workflow-output-schema.json: |
+    {
+      "$id": "classpath:/schemas/workflow-output-schema.json",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "properties": {
+        "result": {
+          "type": "object",
+          "properties": {
+            "message": { "type": "string" },
+            "outputs": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": { "type": "string" },
+                  "value": { "type": "string" },
+                  "format": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
