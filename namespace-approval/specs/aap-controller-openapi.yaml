@@ -1,0 +1,75 @@
+openapi: 3.0.3
+info:
+  title: AAP Controller API
+  description: Minimal OpenAPI spec for AAP Controller job template operations
+  version: "1.0"
+servers:
+  - url: /
+security:
+  - BearerToken: []
+paths:
+  /api/controller/v2/job_templates/{job_template_id}/launch/:
+    post:
+      operationId: launchJobTemplate
+      summary: Launch a job template
+      parameters:
+        - name: job_template_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extra_vars:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "201":
+          description: Job launched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+  /api/controller/v2/jobs/{job_id}/:
+    get:
+      operationId: getJobStatus
+      summary: Get job status
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+components:
+  schemas:
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        failed:
+          type: boolean
+        started:
+          type: string
+        finished:
+          type: string
+        extra_vars:
+          type: string
+  securitySchemes:
+    BearerToken:
+      type: http
+      scheme: bearer

@@ -1,0 +1,28 @@
+FROM registry.redhat.io/openshift-serverless-1/logic-swf-builder-rhel9:1.37.0 AS builder
+
+COPY namespace-approval.sw.yaml /home/kogito/serverless-workflow-project/src/main/resources/namespace-approval.sw.yaml
+COPY schemas/ /home/kogito/serverless-workflow-project/src/main/resources/schemas/
+COPY specs/ /home/kogito/serverless-workflow-project/src/main/resources/specs/
+COPY application.properties /home/kogito/serverless-workflow-project/src/main/resources/application.properties
+
+RUN cd /home/kogito/serverless-workflow-project && \
+    mvn package -B -ntp \
+      -Dquarkus.package.jar.type=mutable-jar \
+      -DskipTests
+
+FROM registry.access.redhat.com/ubi9/openjdk-17-runtime:latest
+
+ENV LANGUAGE='en_US:en'
+
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/lib/ /deployments/lib/
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/*.jar /deployments/
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/app/ /deployments/app/
+COPY --from=builder --chown=185 /home/kogito/serverless-workflow-project/target/quarkus-app/quarkus/ /deployments/quarkus/
+
+EXPOSE 8080
+USER 185
+
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+
+ENTRYPOINT ["java", "-jar", "/deployments/quarkus-run.jar"]

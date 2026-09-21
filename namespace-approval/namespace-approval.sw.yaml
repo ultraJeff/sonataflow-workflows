@@ -10,15 +10,14 @@ extensions:
   - extensionid: workflow-uri-definitions
     definitions:
       notifications: "https://raw.githubusercontent.com/rhdhorchestrator/serverless-workflows/main/workflows/shared/specs/notifications-openapi.yaml"
+      aap: "specs/aap-controller-openapi.yaml"
 functions:
   - name: createNotification
     operation: notifications#createNotification
   - name: launchAAPJobTemplate
-    type: custom
-    operation: "rest:post:/api/controller/v2/job_templates/{job_template_id}/launch/"
+    operation: aap#launchJobTemplate
   - name: getAAPJobStatus
-    type: custom
-    operation: "rest:get:/api/controller/v2/jobs/{job_id}/"
+    operation: aap#getJobStatus
   - name: print
     type: custom
     operation: sysout
@@ -66,12 +65,11 @@ states:
         functionRef:
           refName: launchAAPJobTemplate
           arguments:
-            job_template_id: "8"
+            job_template_id: 8
             extra_vars:
               project_name: .namespaceName
               cpu_quota: .cpuQuota
               memory_quota: .memoryQuota
-            HEADER_Authorization: '"Bearer " + $SECRET.aap_token'
         actionDataFilter:
           toStateData: .aapJobResult
     transition: "Wait for Job"
@@ -85,7 +83,6 @@ states:
           refName: getAAPJobStatus
           arguments:
             job_id: .aapJobResult.id
-            HEADER_Authorization: '"Bearer " + $SECRET.aap_token'
         actionDataFilter:
           toStateData: .aapJobStatus
     transition: "Check Job Status"

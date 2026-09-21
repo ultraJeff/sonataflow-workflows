@@ -9,11 +9,12 @@ data:
     quarkus.rest-client.notifications.url=${BACKSTAGE_NOTIFICATIONS_URL}
     quarkus.openapi-generator.notifications.auth.BearerToken.bearer-token=${NOTIFICATIONS_BEARER_TOKEN}
 
-    # AAP Controller
-    kogito.sw.functions.launchAAPJobTemplate.host=${AAP_URL}
-    kogito.sw.functions.launchAAPJobTemplate.port=443
-    kogito.sw.functions.getAAPJobStatus.host=${AAP_URL}
-    kogito.sw.functions.getAAPJobStatus.port=443
+    # AAP Controller (OpenAPI)
+    quarkus.rest-client.aap.url=https://aap.ultra.lab
+    quarkus.openapi-generator.aap.auth.BearerToken.bearer-token=${aap_token}
+
+    # Workflow service URL (required for callbacks and event publishing)
+    kogito.service.url=http://namespace-approval.sonataflow-infra
 
     # Trust self-signed certs
     quarkus.tls.trust-all=true
