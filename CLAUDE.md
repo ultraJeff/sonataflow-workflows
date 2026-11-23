@@ -47,7 +47,7 @@ Images push to `registry.ultra.lab` (nginx TLS proxy → Nexus Docker connector 
 
 ## Deploying
 
-Deployed by the `sonataflow-workflows` Argo CD Application (openshift-bootstrap-gitops `applications/sonataflow-workflows.yaml`) from the root `kustomization.yaml`. It uses manual sync: commit, then sync the app. Sync waves aren't needed; the operator retries until the configmaps/secret exist. After deploying, the workflow pod must start after the shared data-index service is ready, or the workflow won't appear in the RHDH orchestrator UI.
+Deployed by the `sonataflow-workflows` Argo CD Application (openshift-bootstrap-gitops `applications/sonataflow-workflows.yaml`) from the root `kustomization.yaml`. It uses manual sync: commit, then sync the app. Sync waves aren't needed; the operator retries until the configmaps/secret exist. The operator adds an ownerReference from the SonataFlow CR to `<workflow>-props`, so deleting a CR garbage-collects that ConfigMap and the Argo app goes OutOfSync; re-sync to restore it. After deploying, the workflow pod must start after the shared data-index service is ready, or the workflow won't appear in the RHDH orchestrator UI.
 
 ## Avoid multi-key maps in flows (operator hot loop)
 
