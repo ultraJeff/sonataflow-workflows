@@ -1,0 +1,15 @@
+# Root kustomization synced by the `sonataflow-workflows` Argo CD Application
+# (openshift-bootstrap-gitops: applications/sonataflow-workflows.yaml).
+#
+# Not managed here:
+# - greeting: installed by the Orchestrator Helm chart.
+# - mta-v7: disabled (MTA plugins have no RHDH 2.1 build, and it triggers the
+#   same operator hot loop as namespace-approval). Its live props ConfigMap was
+#   hand-edited (MTA URL / Keycloak auth) and differs from mta-v7/, so syncing it
+#   would clobber that config. See the NOTE in mta-v7/mta-analysis-v7.yaml.
+# - infrastructure/postgresql.yaml: applied manually.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace-approval/manifests

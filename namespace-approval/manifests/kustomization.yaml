@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sonataflow-infra
+
+resources:
+  - 00-secret.yaml
+  - 01-configmap-props.yaml
+  - 02-configmap-schemas.yaml
+  - 02a-configmap-specs.yaml
+  # DISABLED 2026-11-23: SonataFlow operator hot loop (see the NOTE at the top of
+  # 03-sonataflow.yaml). Uncomment to re-enable the workflow.
+  # - 03-sonataflow.yaml

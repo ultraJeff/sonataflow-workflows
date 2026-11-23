@@ -1,3 +1,25 @@
+# NOTE (2026-11-23): DISABLED. This CR is commented out in kustomization.yaml and
+# was deleted from the cluster.
+#
+# Why: the Serverless Logic operator (logic-operator 1.39.2) gets stuck in an
+# endless reconcile loop on this workflow. Every reconcile it fingerprints the
+# flow (status.flowCRC) by gob-encoding spec.flow, and gob writes map keys in
+# random order. The multi-key maps below (e.g. functionRef.arguments with
+# payload/recipients, extra_vars) produce a different CRC almost every time. Each
+# new CRC is written to status, which triggers the next reconcile. Result: ~6
+# SonataFlow updates/s plus Deployment patches, enough to slow the kube-apiserver
+# and make other operators lose leader election.
+# Operator code: apache/incubator-kie-tools packages/sonataflow-operator,
+# utils/crc.go (Crc32Checksum) and common/reconciler.go (PerformStatusUpdate).
+#
+# To re-enable, do ONE of:
+#   - wait for an operator fix (bug to report: "flowCRC is nondeterministic for
+#     flows containing multi-key maps -> endless status update loop"), or
+#   - restructure each multi-key arguments map into a single key whose value is a
+#     jq expression that builds the object (untested), then
+# uncomment `- 03-sonataflow.yaml` in kustomization.yaml and sync the
+# sonataflow-workflows Argo app. Then watch `resourceVersion` stay stable:
+#   oc get sonataflow namespace-approval -n sonataflow-infra -w
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow
 metadata:

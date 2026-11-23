@@ -1,4 +1,20 @@
 ---
+# NOTE (2026-11-23): DISABLED and deleted from the cluster. Not part of the
+# sonataflow-workflows Argo app.
+#
+# Why:
+#   1. It triggers the same Serverless Logic operator hot loop as
+#      namespace-approval: multi-key functionRef.arguments maps give a
+#      nondeterministic status.flowCRC, so the operator updates it ~6x/s forever.
+#      See the NOTE in namespace-approval/manifests/03-sonataflow.yaml.
+#   2. The RHDH MTA plugins have no RHDH 2.1 build, so the workflow isn't usable
+#      from RHDH anyway.
+#
+# Before adding mta-v7 to the Argo app: the live mta-analysis-v7-props ConfigMap
+# was hand-edited (MTA URL / Keycloak password-grant auth) and differs from
+# mta-analysis-v7-props.yaml here. Reconcile that first, keeping credentials in a
+# Secret / ExternalSecret rather than in this repo.
+#
 # Source: mta-v7/templates/04-sonataflow_mta-analysis-v7.yaml
 apiVersion: sonataflow.org/v1alpha08
 kind: SonataFlow

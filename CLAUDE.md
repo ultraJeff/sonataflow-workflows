@@ -47,4 +47,8 @@ Images push to `registry.ultra.lab` (nginx TLS proxy → Nexus Docker connector 
 
 ## Deploying
 
-Apply manifests in order: secret → configmaps → sonataflow CR. After deploying, the workflow pod must start after the shared data-index service is ready, or the workflow won't appear in the RHDH orchestrator UI.
+Deployed by the `sonataflow-workflows` Argo CD Application (openshift-bootstrap-gitops `applications/sonataflow-workflows.yaml`) from the root `kustomization.yaml`. It uses manual sync: commit, then sync the app. Sync waves aren't needed; the operator retries until the configmaps/secret exist. After deploying, the workflow pod must start after the shared data-index service is ready, or the workflow won't appear in the RHDH orchestrator UI.
+
+## Avoid multi-key maps in flows (operator hot loop)
+
+As of logic-operator 1.39.2, a flow containing any free-form map with 2+ keys (e.g. `functionRef.arguments: {payload: ..., recipients: ...}`) sends the operator into an endless status-update loop. `status.flowCRC` is computed by gob-encoding the flow, and gob map order is random. `namespace-approval` and `mta-v7` are **disabled** for this reason; see the NOTE at the top of each SonataFlow CR. A new workflow should either keep every map to a single key or be watched after deploy: if `resourceVersion` keeps climbing while `generation` stays put, it's looping.
